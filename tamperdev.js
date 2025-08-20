@@ -1,0 +1,97 @@
+javascript:(function(){
+if(window.__si5){alert("Ativo");return}window.__si5=1;
+
+// Estilos do painel
+const s=document.createElement("style");
+s.innerHTML="#si5{position:fixed;bottom:18px;left:18px;width:360px;max-height:70vh;z-index:999999;background:#222;color:#fff;padding:10px;font:12px monospace;border-radius:8px;box-shadow:0 2px 14px #0006;overflow:auto}#si5 h3{margin:0 0 5px 0;font-size:13px;color:#ffd700;cursor:move}#si5 label{margin-right:7px}#si5 input[type=checkbox]{vertical-align:middle}#si5 textarea{width:98%;height:32px;margin:3px 0 6px 0;background:#333;color:#ffe;border:1px solid #444;padding:3px 5px;font-size:11px;resize:vertical;border-radius:4px}#si5 button{padding:2px 7px;font-size:11px;margin:2px 2px 2px 0;background:#ffd700;color:#222;border:none;border-radius:3px;cursor:pointer}#si5_close{position:absolute;top:7px;right:12px;color:#e74c3c;cursor:pointer;font-weight:bold;font-size:15px}";
+document.head.appendChild(s);
+
+// Painel
+const d=document.createElement("div");
+d.id="si5";
+d.innerHTML='<div id="si5_close">✖</div><h3>Inspector</h3><button id="si5_zoom_in">+</button><button id="si5_zoom_out">-</button><br><label><input type="checkbox" id="si5_toggle">Inspecionar</label><label><input type="checkbox" id="si5_block">Bloquear</label><div><b>URL:</b><textarea id="si5_url" placeholder="URL"></textarea></div><div><b>Método:</b><textarea id="si5_method" placeholder="GET or POST"></textarea></div><div><b>Payload:</b><textarea id="si5_payload" placeholder="key=value&key2=value2"></textarea></div><div><b>HTML:</b><textarea id="si5_html" placeholder="HTML"></textarea></div><div><b>JS:</b><textarea id="si5_js" placeholder="JS"></textarea></div><button id="si5_send">Enviar</button>';
+document.body.appendChild(d);
+
+// Elementos do painel
+const t=d.querySelector("#si5_toggle"),b=d.querySelector("#si5_block"),h=d.querySelector("#si5_html"),j=d.querySelector("#si5_js"),u=d.querySelector("#si5_url"),m=d.querySelector("#si5_method"),p=d.querySelector("#si5_payload");
+
+// Fechar painel
+d.querySelector("#si5_close").onclick=function(){d.remove();s.remove();window.__si5=0;};
+
+// Drag
+let dragging=false,dx=0,dy=0;
+d.querySelector("h3").addEventListener("mousedown",e=>{dragging=true;dx=e.clientX-d.offsetLeft;dy=e.clientY-d.offsetTop;});
+document.addEventListener("mousemove",e=>{if(dragging){d.style.left=e.clientX-dx+"px";d.style.top=e.clientY-dy+"px";}});
+document.addEventListener("mouseup",()=>{dragging=false;});
+
+// Zoom
+d.querySelector("#si5_zoom_in").onclick=()=>{let sc=parseFloat(d.style.transform.replace("scale(","")||1);sc+=0.1;d.style.transform="scale("+sc+")"};
+d.querySelector("#si5_zoom_out").onclick=()=>{let sc=parseFloat(d.style.transform.replace("scale(","")||1);sc=Math.max(0.5,sc-0.1);d.style.transform="scale("+sc+")"};
+
+// Função para transformar body em string
+function bodyToString(b){
+if(!b)return"";
+try{
+if(typeof b==="string")return b;
+if(b instanceof URLSearchParams)return b.toString();
+if(b instanceof FormData){let a=[];for(const e of b.entries()){let k=e[0],v=e[1];a.push(encodeURIComponent(k)+"="+encodeURIComponent(v instanceof File?(v.name+"[file]"):String(v)))}return a.join("&")}
+return JSON.stringify(b);
+}catch(e){return String(b);}
+}
+
+// Captura cliques e preenchimento automático
+document.addEventListener("click",function(e){
+if(!t.checked)return;
+if(d.contains(e.target))return;
+const el=e.target;
+h.value=el.outerHTML||"[sem outerHTML]";
+j.value=([...el.attributes].filter(x=>x.name.startsWith("on")).map(x=>x.name+'="'+x.value+'"').join("\n"))||"[Sem eventos]";
+const a=el.closest&&el.closest("a");
+if(a){u.value=a.href;m.value="GET";p.value="[link-click]";if(b.checked)e.preventDefault();} 
+},true);
+
+// Captura submit de formulários
+document.addEventListener("submit",function(e){
+const form=e.target;
+if(!form)return;
+const action=form.action||location.href;
+const method=(form.method||"GET").toUpperCase();
+const fd=new FormData(form);
+u.value=action;m.value=method;p.value=bodyToString(fd);
+if(b.checked)e.preventDefault();
+},true);
+
+// Botão Enviar: GET ou POST real, sem bloquear redirecionamento
+d.querySelector("#si5_send").onclick=function(){
+const url=u.value;
+const method=(m.value||"GET").toUpperCase();
+const payload=p.value;
+if(!url)return alert("Informe a URL");
+
+if(method==="GET"){
+    let fullUrl = url;
+    if(payload) fullUrl += (url.includes("?")?"&":"?")+payload;
+    window.location.href = fullUrl;
+    return;
+}
+
+// POST com form temporário
+const form = document.createElement("form");
+form.method = "POST";
+form.action = url;
+form.style.display = "none";
+if(payload){
+    const pairs = payload.split("&");
+    pairs.forEach(pair=>{
+        const [k,v] = pair.split("=");
+        const input = document.createElement("input");
+        input.name = decodeURIComponent(k||"");
+        input.value = decodeURIComponent(v||"");
+        form.appendChild(input);
+    });
+}
+document.body.appendChild(form);
+form.submit();
+form.remove();
+};
+})();
