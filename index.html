@@ -8,30 +8,45 @@
 <body>
 <script>
 (async function(){
-  const BASE_URL = "https://cdn-star.netlify.app/"; // Coloque aqui seu site Netlify
+  const BASE_URL = "https://cdn-star.netlify.app/"; // Coloque aqui seu Netlify
   const qs = new URLSearchParams(window.location.search);
   const file = qs.get("q");
+
+  // Função para retornar JSON direto na página
+  function returnJSON(json){
+    document.body.innerHTML = "<pre>" + JSON.stringify(json, null, 2) + "</pre>";
+  }
+
+  // Função para retornar erro JSON
+  function returnError(msg, code=405){
+    document.body.innerHTML = "<pre>" + JSON.stringify({error: msg, code: code}, null, 2) + "</pre>";
+  }
+
   if(!file){
-    document.body.innerHTML = "<h2>Use ?q=arquivo.json ou ?q=arquivo.txt na URL</h2>";
+    returnError("Nenhum arquivo especificado. Use ?q=arquivo.txt ou ?q=arquivo.json", 400);
     return;
   }
+
+  // Bloqueia caracteres suspeitos de ataque
+  const blocked = /['";=]/;
+  if(blocked.test(file)){
+    returnError("Método não permitido", 405);
+    return;
+  }
+
   try{
     const res = await fetch(BASE_URL + file);
     if(!res.ok) throw new Error("Arquivo não encontrado");
     const text = await res.text();
     let json;
     try{
-      json = JSON.parse(text); // tenta converter em JSON
+      json = JSON.parse(text); // tenta JSON
     }catch{
-      // se for TXT, transforma em array JSON por linha
-      json = text.split("\n");
+      json = text.split("\n"); // se TXT, transforma em array
     }
-    // Cria um Blob com tipo application/json para que o navegador abra igual API
-    const blob = new Blob([JSON.stringify(json,null,2)], {type:"application/json"});
-    const blobUrl = URL.createObjectURL(blob);
-    window.location.href = blobUrl; // abre o JSON no estilo API
+    returnJSON(json);
   }catch(e){
-    document.body.innerHTML = "<pre>"+e+"</pre>";
+    returnError(e.message, 404);
   }
 })();
 </script>
