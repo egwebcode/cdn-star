@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JSON API Proxy Seguro</title>
+<title>JSON API Viewer Profissional</title>
+<style>
+body{margin:0;padding:0;font-family:monospace;background:#0b1016;color:#e6edf3;display:flex;justify-content:center;align-items:center;height:100vh;}
+iframe{width:90%;height:90vh;border:none;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.3);}
+pre{padding:20px;}
+</style>
 </head>
 <body>
 <script>
@@ -11,8 +16,8 @@
   const BASE_URL = "https://cdn-star.netlify.app/"; // Seu Netlify
   const BLOQUEIO_URL = BASE_URL + "bloqueio.html";
 
-  // Verifica se já está bloqueado
-  if(localStorage.getItem("bloqueado") === "true"){
+  // Bloqueio permanente
+  if(localStorage.getItem("bloqueado")==="true"){
     window.location.href = BLOQUEIO_URL;
     return;
   }
@@ -27,28 +32,25 @@
     return;
   }
   if(suspeitos.test(file)){
-    localStorage.setItem("bloqueado","true"); // bloqueia permanentemente
+    localStorage.setItem("bloqueado","true");
     window.location.href = BLOQUEIO_URL;
     return;
   }
 
   try{
-    const res = await fetch(BASE_URL + file);
+    // Testa se o arquivo existe
+    const res = await fetch(BASE_URL + file, {method:"HEAD"});
     if(!res.ok) throw new Error("Arquivo não encontrado");
 
-    const text = await res.text();
-    let json;
-    try{
-      json = JSON.parse(text); // tenta JSON
-    }catch{
-      json = text.split("\n"); // se TXT, transforma em array JSON
-    }
+    // Cria iframe profissional
+    const iframe = document.createElement("iframe");
+    iframe.src = BASE_URL + file;
+    document.body.appendChild(iframe);
 
-    // Exibe JSON puro no navegador
-    document.body.innerHTML = "<pre>" + JSON.stringify(json,null,2) + "</pre>";
   }catch(e){
     document.body.innerHTML = "<pre>{\"error\":\""+e.message+"\",\"code\":404}</pre>";
   }
+
 })();
 </script>
 </body>
