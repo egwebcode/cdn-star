@@ -1,49 +1,38 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CDN STAR</title>
-  <style>
-    body{font-family:monospace;background:#0b1016;color:#e6edf3;margin:0;padding:20px;display:flex;justify-content:center;align-items:center;height:100vh;}
-    .container{max-width:480px;width:100%;background:#111826;padding:20px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.3);}
-    h1{font-size:18px;margin-bottom:16px;text-align:center;}
-    input{width:calc(100% - 100px);padding:10px;font-size:14px;border-radius:6px;border:none;margin-right:8px;}
-    button{padding:10px 14px;font-size:14px;border-radius:6px;border:none;background:#4f46e5;color:white;cursor:pointer;}
-    button:hover{background:#3730a3;}
-    @media(max-width:480px){input{width:100%;margin-bottom:8px;}}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON API Proxy</title>
 </head>
 <body>
-<div class="container">
-  <h1>📂 Buscar arquivo do Netlify</h1>
-  <div style="display:flex;gap:4px;flex-wrap:wrap;">
-    <input type="text" id="fileInput" placeholder="Ex: emails.txt">
-    <button id="searchBtn">Buscar</button>
-  </div>
-  <p style="margin-top:12px;font-size:12px;color:#93a2b1;">Digite o arquivo e clique buscar, será redirecionado para a URL real do arquivo em JSON/TXT.</p>
-</div>
-
 <script>
-(function(){
-  const input = document.getElementById("fileInput");
-  const btn = document.getElementById("searchBtn");
-  const BASE_URL = "https://cdn-star.netlify.app/"; // Substitua pela URL real do seu Netlify
-
-  function redirectToFile(filename){
-    if(!filename) return alert("Digite um arquivo!");
-    // Redireciona direto para a URL real com ?q=
-    const url = BASE_URL + "?q=" + encodeURIComponent(filename);
-    window.location.href = url;
+(async function(){
+  const BASE_URL = "https://cdn-star.netlify.app/"; // Coloque aqui seu site Netlify
+  const qs = new URLSearchParams(window.location.search);
+  const file = qs.get("q");
+  if(!file){
+    document.body.innerHTML = "<h2>Use ?q=arquivo.json ou ?q=arquivo.txt na URL</h2>";
+    return;
   }
-
-  btn.addEventListener("click", ()=>{
-    redirectToFile(input.value.trim());
-  });
-
-  input.addEventListener("keydown", e=>{
-    if(e.key === "Enter") btn.click();
-  });
+  try{
+    const res = await fetch(BASE_URL + file);
+    if(!res.ok) throw new Error("Arquivo não encontrado");
+    const text = await res.text();
+    let json;
+    try{
+      json = JSON.parse(text); // tenta converter em JSON
+    }catch{
+      // se for TXT, transforma em array JSON por linha
+      json = text.split("\n");
+    }
+    // Cria um Blob com tipo application/json para que o navegador abra igual API
+    const blob = new Blob([JSON.stringify(json,null,2)], {type:"application/json"});
+    const blobUrl = URL.createObjectURL(blob);
+    window.location.href = blobUrl; // abre o JSON no estilo API
+  }catch(e){
+    document.body.innerHTML = "<pre>"+e+"</pre>";
+  }
 })();
 </script>
 </body>
