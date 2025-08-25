@@ -3,99 +3,53 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JSON API Viewer</title>
-<style>
-body{margin:0;padding:20px;font-family:monospace;background:#0b1016;color:#e6edf3;}
-.container{max-width:800px;margin:auto;}
-pre{background:#0f1623;padding:12px;border-radius:8px;overflow:auto;white-space:pre-wrap;}
-.key{color:#9cdcfe;}
-.string{color:#ce9178;}
-.number{color:#b5cea8;}
-.boolean{color:#569cd6;}
-.null{color:#c586c0;}
-.fold{cursor:pointer;color:#dcdcaa;}
-</style>
+<title>JSON API Proxy Seguro</title>
 </head>
 <body>
-<div class="container">
-<h2>JSON API Viewer</h2>
-<div id="jsonContainer"></div>
-</div>
-
 <script>
-const BASE_URL = "https://cdn-star.netlify.app/"; // Coloque seu site Netlify
-const container = document.getElementById("jsonContainer");
+(async function(){
+  const BASE_URL = "https://cdn-star.netlify.app/"; // Seu Netlify
+  const BLOQUEIO_URL = BASE_URL + "bloqueio.html";
 
-// Função para escapar HTML
-function escapeHTML(str){return str.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]);}
-
-// Função para colorir JSON estilo DevTools
-function jsonToHTML(json){
-  if(typeof json === "string") return `<span class="string">"${escapeHTML(json)}"</span>`;
-  if(typeof json === "number") return `<span class="number">${json}</span>`;
-  if(typeof json === "boolean") return `<span class="boolean">${json}</span>`;
-  if(json === null) return `<span class="null">null</span>`;
-  if(Array.isArray(json)){
-    if(json.length===0) return "[]";
-    const items = json.map(v=>`<li>${jsonToHTML(v)}</li>`).join("");
-    return `<span class="fold">[+]</span><ul style="display:none;list-style:none;margin-left:16px;padding-left:0">${items}</ul>`;
+  // Verifica se já está bloqueado
+  if(localStorage.getItem("bloqueado") === "true"){
+    window.location.href = BLOQUEIO_URL;
+    return;
   }
-  if(typeof json==="object"){
-    const keys = Object.keys(json);
-    if(keys.length===0) return "{}";
-    const items = keys.map(k=>`<li><span class="key">"${escapeHTML(k)}"</span>: ${jsonToHTML(json[k])}</li>`).join("");
-    return `<span class="fold">{+}</span><ul style="display:none;list-style:none;margin-left:16px;padding-left:0">${items}</ul>`;
+
+  // Pega ?search=
+  const file = new URLSearchParams(location.search).get("search");
+
+  // Bloqueia caracteres suspeitos
+  const suspeitos = /['";=<>{}]/;
+  if(!file){
+    document.body.innerHTML = "<pre>{\"error\":\"Nenhum arquivo especificado\",\"code\":400}</pre>";
+    return;
   }
-  return escapeHTML(json);
-}
+  if(suspeitos.test(file)){
+    localStorage.setItem("bloqueado","true"); // bloqueia permanentemente
+    window.location.href = BLOQUEIO_URL;
+    return;
+  }
 
-// Função para ativar fold/unfold
-function activateFold(){
-  container.querySelectorAll(".fold").forEach(f=>{
-    f.addEventListener("click", ()=>{
-      const ul = f.nextElementSibling;
-      if(!ul) return;
-      if(ul.style.display==="none"){ul.style.display="block"; f.textContent=f.textContent.replace("+","-");}
-      else{ul.style.display="none"; f.textContent=f.textContent.replace("-","+");}
-    });
-  });
-}
-
-// Função para retornar JSON ou array TXT
-function renderJSON(json){
-  container.innerHTML = "<pre>"+jsonToHTML(json)+"</pre>";
-  activateFold();
-}
-
-// Função para erro JSON
-function returnError(msg, code=405){
-  renderJSON({error: msg, code});
-}
-
-// Bloqueia caracteres suspeitos
-function isValidFile(file){
-  const blocked = /['";=]/;
-  return file && !blocked.test(file);
-}
-
-// Pega ?q=arquivo
-const file = new URLSearchParams(location.search).get("q");
-if(!file){
-  returnError("Nenhum arquivo especificado. Use ?q=arquivo.txt ou ?q=arquivo.json",400);
-} else if(!isValidFile(file)){
-  returnError("Método não permitido",405);
-} else {
-  fetch(BASE_URL + file).then(res=>{
+  try{
+    const res = await fetch(BASE_URL + file);
     if(!res.ok) throw new Error("Arquivo não encontrado");
-    return res.text();
-  }).then(text=>{
+
+    const text = await res.text();
     let json;
-    try{json=JSON.parse(text);}catch{json=text.split("\n");}
-    renderJSON(json);
-  }).catch(e=>{
-    returnError(e.message,404);
-  });
-}
+    try{
+      json = JSON.parse(text); // tenta JSON
+    }catch{
+      json = text.split("\n"); // se TXT, transforma em array JSON
+    }
+
+    // Exibe JSON puro no navegador
+    document.body.innerHTML = "<pre>" + JSON.stringify(json,null,2) + "</pre>";
+  }catch(e){
+    document.body.innerHTML = "<pre>{\"error\":\""+e.message+"\",\"code\":404}</pre>";
+  }
+})();
 </script>
 </body>
 </html>
