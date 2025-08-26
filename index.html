@@ -25,11 +25,11 @@ pre {padding:20px;color:#e6edf3;font-family:monospace;}
 
   const suspeitos = /['";=<>{}]/;
   if(!file){
-    document.body.innerHTML = "<pre>{\"error\":\"Nenhum arquivo especificado\",\"code\":400}</pre>";
+    document.body.innerHTML = "<pre>{\"error\":\"Use /?q=ALGO_AQUI \",\"code\":400}</pre>";
     return;
   }
   if(suspeitos.test(file)){
-    localStorage.setItem("bloqueado","true");
+    localStorage.setItem("ㅤ","ㅤ");
     window.location.href = BLOQUEIO_URL;
     return;
   }
