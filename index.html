@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JSON API Fullscreen</title>
+<title>API DE CONSULTA JS</title>
 <style>
 html, body {margin:0;padding:0;width:100%;height:100%;background:#0b1016;}
 iframe {width:100%;height:100%;border:none;}
@@ -16,16 +16,13 @@ pre {padding:20px;color:#e6edf3;font-family:monospace;}
   const BASE_URL = "https://cdn-star.netlify.app/"; // Seu Netlify
   const BLOQUEIO_URL = BASE_URL + "404.html";
 
-  // Bloqueio permanente
-  if(localStorage.getItem("bloqueado")==="true"){
+  if(localStorage.getItem("ㅤ")==="ㅤ"){
     window.location.href = BLOQUEIO_URL;
     return;
   }
 
-  // Pega ?search=
   const file = new URLSearchParams(location.search).get("search");
 
-  // Bloqueia caracteres suspeitos
   const suspeitos = /['";=<>{}]/;
   if(!file){
     document.body.innerHTML = "<pre>{\"error\":\"Nenhum arquivo especificado\",\"code\":400}</pre>";
