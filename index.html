@@ -25,7 +25,7 @@ pre {padding:20px;color:#e6edf3;font-family:monospace;}
 
   const suspeitos = /['";=<>{}]/;
   if(!file){
-    document.body.innerHTML = "<pre>{\"error\":\"Use /?q=ALGO_AQUI \",\"code\":400}</pre>";
+    document.body.innerHTML = "<pre>{\"error\":\"Use /?search= para pesquisar na api\",\"code\":400}</pre>";
     return;
   }
   if(suspeitos.test(file)){
