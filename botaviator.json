@@ -1,0 +1,53 @@
+javascript:(function(){
+  if(document.getElementById("aviator-panel")) return;
+  let panel=document.createElement("div");
+  panel.id="aviator-panel";
+  panel.style.cssText="position:fixed;top:20px;right:20px;width:300px;background:#fff;padding:15px;border-radius:12px;box-shadow:0 0 10px rgba(0,0,0,0.3);z-index:99999;font-family:Arial";
+  
+  panel.innerHTML=`
+    <h3 style="text-align:center;margin:0 0 10px 0;">🎮 Aviator Automático</h3>
+    <label>Stake:</label>
+    <input id="stake" type="number" value="10" style="width:100%;padding:5px;margin-bottom:8px;border-radius:6px;border:1px solid #ccc;">
+    
+    <label>Gale:</label>
+    <input id="gale" type="number" value="2" style="width:100%;padding:5px;margin-bottom:8px;border-radius:6px;border:1px solid #ccc;">
+    
+    <label>StopWin:</label>
+    <input id="stopwin" type="number" value="7000" style="width:100%;padding:5px;margin-bottom:8px;border-radius:6px;border:1px solid #ccc;">
+    
+    <label>StopLoss:</label>
+    <input id="stoploss" type="number" value="500" style="width:100%;padding:5px;margin-bottom:8px;border-radius:6px;border:1px solid #ccc;">
+    
+    <label>Objetivo:</label>
+    <input id="objetivo" type="text" value="1.5" style="width:100%;padding:5px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;">
+    
+    <div style="display:flex;gap:10px;justify-content:center;margin:10px 0;">
+      <div style="width:25px;height:25px;background:#2196f3;border-radius:50%;cursor:pointer;"></div>
+      <div style="width:25px;height:25px;background:#9c27b0;border-radius:50%;cursor:pointer;"></div>
+      <div style="width:25px;height:25px;background:#e91e63;border-radius:50%;cursor:pointer;"></div>
+    </div>
+    
+    <button id="startBtn" style="width:100%;padding:10px;margin-top:5px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">Iniciar</button>
+    <button id="stopBtn" style="width:100%;padding:10px;margin-top:5px;background:#e53935;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">Parar</button>
+    
+    <button id="closeBtn" style="width:100%;padding:8px;margin-top:10px;background:#555;color:#fff;border:none;border-radius:6px;cursor:pointer;">Fechar Painel</button>
+  `;
+  
+  document.body.appendChild(panel);
+  
+  document.getElementById("closeBtn").onclick=function(){
+    document.body.removeChild(panel);
+  };
+  
+  document.getElementById("startBtn").onclick=function(){
+    alert("✅ Bot iniciado!\nStake: "+document.getElementById("stake").value+
+          "\nGale: "+document.getElementById("gale").value+
+          "\nStopWin: "+document.getElementById("stopwin").value+
+          "\nStopLoss: "+document.getElementById("stoploss").value+
+          "\nObjetivo: "+document.getElementById("objetivo").value);
+  };
+  
+  document.getElementById("stopBtn").onclick=function(){
+    alert("⛔ Bot parado!");
+  };
+})();
