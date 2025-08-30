@@ -1,53 +1,390 @@
 javascript:(function(){
-  if(document.getElementById("aviator-panel")) return;
-  let panel=document.createElement("div");
-  panel.id="aviator-panel";
-  panel.style.cssText="position:fixed;top:20px;right:20px;width:300px;background:#fff;padding:15px;border-radius:12px;box-shadow:0 0 10px rgba(0,0,0,0.3);z-index:99999;font-family:Arial";
-  
-  panel.innerHTML=`
-    <h3 style="text-align:center;margin:0 0 10px 0;">🎮 Aviator Automático</h3>
-    <label>Stake:</label>
-    <input id="stake" type="number" value="10" style="width:100%;padding:5px;margin-bottom:8px;border-radius:6px;border:1px solid #ccc;">
-    
-    <label>Gale:</label>
-    <input id="gale" type="number" value="2" style="width:100%;padding:5px;margin-bottom:8px;border-radius:6px;border:1px solid #ccc;">
-    
-    <label>StopWin:</label>
-    <input id="stopwin" type="number" value="7000" style="width:100%;padding:5px;margin-bottom:8px;border-radius:6px;border:1px solid #ccc;">
-    
-    <label>StopLoss:</label>
-    <input id="stoploss" type="number" value="500" style="width:100%;padding:5px;margin-bottom:8px;border-radius:6px;border:1px solid #ccc;">
-    
-    <label>Objetivo:</label>
-    <input id="objetivo" type="text" value="1.5" style="width:100%;padding:5px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;">
-    
-    <div style="display:flex;gap:10px;justify-content:center;margin:10px 0;">
-      <div style="width:25px;height:25px;background:#2196f3;border-radius:50%;cursor:pointer;"></div>
-      <div style="width:25px;height:25px;background:#9c27b0;border-radius:50%;cursor:pointer;"></div>
-      <div style="width:25px;height:25px;background:#e91e63;border-radius:50%;cursor:pointer;"></div>
-    </div>
-    
-    <button id="startBtn" style="width:100%;padding:10px;margin-top:5px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">Iniciar</button>
-    <button id="stopBtn" style="width:100%;padding:10px;margin-top:5px;background:#e53935;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">Parar</button>
-    
-    <button id="closeBtn" style="width:100%;padding:8px;margin-top:10px;background:#555;color:#fff;border:none;border-radius:6px;cursor:pointer;">Fechar Painel</button>
-  `;
-  
-  document.body.appendChild(panel);
-  
-  document.getElementById("closeBtn").onclick=function(){
-    document.body.removeChild(panel);
+/* === Aviator Automático - Bookmarklet ===
+   - Mapear elementos clicando em "Mapear"
+   - Salva em localStorage
+   - Estratégias: stake, gale (martingale), objetivo (multiplicador), stopWin, stopLoss
+*/
+
+if(window.__aviator_auto_running){ alert("Painel já aberto."); return; }
+window.__aviator_auto_running = true;
+
+function $(s){ try{ return document.querySelector(s); }catch(e){return null;} }
+function $all(s){ try{ return Array.from(document.querySelectorAll(s)); }catch(e){return []; } }
+
+// util: cria seletor CSS razoável para um elemento
+function getUniqueSelector(el){
+  if(!el) return null;
+  if(el.id) return '#'+el.id;
+  let path=[];
+  let node = el;
+  while(node && node.nodeType===1 && node !== document.body){
+    let name = node.nodeName.toLowerCase();
+    if(node.id){ path.unshift('#'+node.id); break; }
+    let cls = node.className && typeof node.className==='string' ? node.className.split(/\s+/).filter(Boolean).slice(0,2).join('.') : '';
+    let sibIndex = 1;
+    let sib = node;
+    while(sib.previousElementSibling){
+      sib = sib.previousElementSibling;
+      if(sib.nodeName === node.nodeName) sibIndex++;
+    }
+    let part = name + (cls?'.'+cls:'') + (sibIndex>1?':nth-of-type('+sibIndex+')':'');
+    path.unshift(part);
+    node = node.parentElement;
+  }
+  return path.length? path.join(' > ') : null;
+}
+
+// storage helpers
+const STORAGE_KEY = 'aviator_auto_map_v1';
+function saveMap(map){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+}
+function loadMap(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }catch(e){ return {}; }
+}
+
+// panel UI
+const style = `
+#aviator-auto-panel{position:fixed;right:12px;top:60px;z-index:9999999;width:320px;background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.4);font-family:sans-serif;padding:12px}
+#aviator-auto-panel h3{margin:0 0 8px;font-size:16px;text-align:center}
+.aa-row{display:flex;gap:8px;margin:6px 0;align-items:center}
+.aa-row input[type=text], .aa-row input[type=number]{flex:1;padding:8px;border-radius:6px;border:1px solid #ddd}
+.aa-btn{padding:8px 10px;border-radius:6px;border:none;cursor:pointer}
+.aa-btn.map{background:#0275d8;color:#fff}
+.aa-btn.start{background:#28a745;color:#fff;flex:1}
+.aa-btn.stop{background:#dc3545;color:#fff;flex:1}
+.aa-small{font-size:12px;color:#555}
+#aviator-log{height:120px;overflow:auto;background:#111;color:#dcdcdc;padding:8px;border-radius:6px;font-size:12px}
+.aa-map-list{font-size:12px;color:#333; margin-top:6px}
+.aa-footer{display:flex;gap:8px;margin-top:8px}
+`;
+
+// create panel container
+const panel = document.createElement('div');
+panel.id = 'aviator-auto-panel';
+panel.innerHTML = `
+<style>${style}</style>
+<h3>🎮 Aviator Automático</h3>
+<div class="aa-row"><input id="aa-stake" type="number" step="0.01" value="1" /><div class="aa-small">Stake</div></div>
+<div class="aa-row"><input id="aa-gale" type="number" step="0.1" value="2" /><div class="aa-small">Gale x</div></div>
+<div class="aa-row"><input id="aa-target" type="number" step="0.01" value="1.5" /><div class="aa-small">Objetivo (x)</div></div>
+<div class="aa-row"><input id="aa-stopwin" type="number" step="1" value="7000" /><div class="aa-small">StopWin (valor)</div></div>
+<div class="aa-row"><input id="aa-stoploss" type="number" step="1" value="500" /><div class="aa-small">StopLoss (valor)</div></div>
+
+<div style="margin-top:8px;font-weight:600">Mapear elementos</div>
+<div class="aa-row">
+  <button class="aa-btn map" data-map="balance">Mapear Saldo</button>
+  <button class="aa-btn map" data-map="bet1">Mapear Aposta 1</button>
+</div>
+<div class="aa-row">
+  <button class="aa-btn map" data-map="bet2">Mapear Aposta 2</button>
+  <button class="aa-btn map" data-map="cashout">Mapear Cashout</button>
+</div>
+<div class="aa-row">
+  <button class="aa-btn map" data-map="multiplier">Mapear Multiplicador</button>
+  <button class="aa-btn map" data-map="round">Mapear Indicador Round</button>
+</div>
+
+<div class="aa-row">
+  <button id="aa-start" class="aa-btn start">Iniciar</button>
+  <button id="aa-stop" class="aa-btn stop">Parar</button>
+</div>
+
+<div class="aa-row"><div style="flex:1" id="aa-map-display" class="aa-map-list"></div></div>
+<div id="aviator-log"></div>
+<div style="margin-top:8px;text-align:center;font-size:12px;color:#666">Mapeamentos salvos no localStorage</div>
+`;
+
+// append close button
+const closeBtn = document.createElement('button');
+closeBtn.textContent = '✕';
+closeBtn.style.cssText = 'position:absolute;right:8px;top:8px;border:none;background:transparent;font-size:16px;cursor:pointer';
+closeBtn.onclick = ()=>{ panel.remove(); window.__aviator_auto_running = false; };
+panel.appendChild(closeBtn);
+
+document.body.appendChild(panel);
+
+// helpers for UI
+const logEl = panel.querySelector('#aviator-log');
+function log(msg){
+  const time = new Date().toLocaleTimeString();
+  logEl.innerHTML = `<div>[${time}] ${msg}</div>` + logEl.innerHTML;
+}
+
+// mapping flow
+let mappingMode = null;
+let mapStore = loadMap();
+function refreshMapDisplay(){
+  let html = '';
+  ['balance','bet1','bet2','cashout','multiplier','round'].forEach(k=>{
+    html += `<div><b>${k}</b>: ${mapStore[k] || '<i>--</i>'}</div>`;
+  });
+  panel.querySelector('#aa-map-display').innerHTML = html;
+}
+refreshMapDisplay();
+
+function startMapping(type){
+  mappingMode = type;
+  log('Modo mapear: clique no elemento desejado para "'+type+'" (ESC cancela).');
+  const handler = function(e){
+    e.preventDefault(); e.stopPropagation();
+    const sel = getUniqueSelector(e.target);
+    if(sel){
+      mapStore[type] = sel;
+      saveMap(mapStore);
+      refreshMapDisplay();
+      log('Mapeado '+type+' => ' + sel);
+    } else {
+      log('Não foi possível gerar seletor para o elemento. Tente novamente.');
+    }
+    document.removeEventListener('click', handler, true);
+    mappingMode = null;
   };
-  
-  document.getElementById("startBtn").onclick=function(){
-    alert("✅ Bot iniciado!\nStake: "+document.getElementById("stake").value+
-          "\nGale: "+document.getElementById("gale").value+
-          "\nStopWin: "+document.getElementById("stopwin").value+
-          "\nStopLoss: "+document.getElementById("stoploss").value+
-          "\nObjetivo: "+document.getElementById("objetivo").value);
-  };
-  
-  document.getElementById("stopBtn").onclick=function(){
-    alert("⛔ Bot parado!");
-  };
+  document.addEventListener('click', handler, true);
+  // esc to cancel
+  function escH(ev){
+    if(ev.key === 'Escape'){ mappingMode = null; document.removeEventListener('keydown', escH); document.removeEventListener('click', handler, true); log('Mapeamento cancelado'); }
+  }
+  document.addEventListener('keydown', escH);
+}
+
+// bind map buttons
+panel.querySelectorAll('.aa-btn.map').forEach(btn=>{
+  btn.addEventListener('click', ()=> startMapping(btn.dataset.map));
+});
+
+// utilities to interact with mapped elements
+function queryMapped(k){
+  const s = mapStore[k];
+  if(!s) return null;
+  return document.querySelector(s);
+}
+function clickMapped(k){
+  const el = queryMapped(k);
+  if(!el) { log('Elemento mapeado "'+k+'" não encontrado.'); return false; }
+  try{
+    el.click();
+    return true;
+  }catch(e){
+    // try dispatch event
+    const ev = new MouseEvent('click', {bubbles:true,cancelable:true,view:window});
+    el.dispatchEvent(ev);
+    return true;
+  }
+}
+function readMappedText(k){
+  const el = queryMapped(k);
+  if(!el) return null;
+  return el.innerText || el.textContent || null;
+}
+function parseMoney(text){
+  if(!text) return null;
+  // remove non-digit except . and ,
+  let t = text.replace(/[^\d.,-]/g,'').trim();
+  // common formats: "1,234.56" or "1.234,56" or "1234,56" etc
+  if(t.indexOf(',')>-1 && t.indexOf('.')>-1){
+    if(t.lastIndexOf(',') > t.lastIndexOf('.')){ // maybe 1.234,56
+      t = t.replace(/\./g,'').replace(',','.');
+    } else {
+      t = t.replace(/,/g,''); // 1,234.56 -> 1234.56
+    }
+  } else if(t.indexOf(',')>-1){
+    t = t.replace(',','.');
+  }
+  t = t.replace(/[^0-9.-]/g,'');
+  const v = parseFloat(t);
+  return isNaN(v)? null : v;
+}
+function parseMultiplier(text){
+  if(!text) return null;
+  const m = text.match(/[\d,.]+/);
+  if(!m) return null;
+  return parseFloat(m[0].replace(',','.'));
+}
+
+// Core automation
+let autoState = {
+  running:false,
+  stake: parseFloat(panel.querySelector('#aa-stake').value) || 1,
+  baseStake: parseFloat(panel.querySelector('#aa-stake').value) || 1,
+  galeMult: parseFloat(panel.querySelector('#aa-gale').value) || 2,
+  targetX: parseFloat(panel.querySelector('#aa-target').value) || 1.5,
+  stopWin: parseFloat(panel.querySelector('#aa-stopwin').value) || 7000,
+  stopLoss: parseFloat(panel.querySelector('#aa-stoploss').value) || 500,
+  currentGale:0,
+  lastBalance: null,
+  consecutiveLosses:0
+};
+
+// UI bind inputs
+panel.querySelector('#aa-stake').addEventListener('change', function(){ autoState.baseStake = parseFloat(this.value) || 1; autoState.stake = autoState.baseStake; });
+panel.querySelector('#aa-gale').addEventListener('change', function(){ autoState.galeMult = parseFloat(this.value) || 2; });
+panel.querySelector('#aa-target').addEventListener('change', function(){ autoState.targetX = parseFloat(this.value) || 1.5; });
+panel.querySelector('#aa-stopwin').addEventListener('change', function(){ autoState.stopWin = parseFloat(this.value) || 7000; });
+panel.querySelector('#aa-stoploss').addEventListener('change', function(){ autoState.stopLoss = parseFloat(this.value) || 500; });
+
+// control buttons
+panel.querySelector('#aa-start').addEventListener('click', ()=> startAuto());
+panel.querySelector('#aa-stop').addEventListener('click', ()=> stopAuto());
+
+function readBalance(){
+  const txt = readMappedText('balance');
+  const v = parseMoney(txt);
+  if(v==null) log('Saldo: não foi possível ler saldo ('+txt+')');
+  return v;
+}
+
+function wait(ms){ return new Promise(res => setTimeout(res,ms)); }
+
+// function to detect round lifecycle using multiplier element
+async function waitForNextRound(){
+  const sel = mapStore['multiplier'];
+  if(!sel){ log('Multiplicador não mapeado. Mapear multiplicador para detectar rounds.'); throw 'no_multiplier'; }
+  let prev = parseMultiplier(readMappedText('multiplier')) || 0;
+  // wait until multiplier resets (drop) then new increase
+  log('Aguardando início do próximo round... (monitorando multiplicador)');
+  // detect reset: we wait until multiplier dips (round ended), then wait until it rises again
+  // step1: wait for dip below 1.05 (or drop relative)
+  for(let i=0;i<600;i++){
+    const cur = parseMultiplier(readMappedText('multiplier')) || 0;
+    if(cur < 1.05){ break; }
+    await wait(300);
+  }
+  // step2: wait for rise >1.02 (new round starting)
+  for(let i=0;i<600;i++){
+    const cur = parseMultiplier(readMappedText('multiplier')) || 0;
+    if(cur > 1.02){ return; }
+    await wait(200);
+  }
+  // timeout
+  throw 'round_timeout';
+}
+
+// core single-round routine
+async function playOneRound(){
+  try{
+    // read current balance
+    const before = readBalance();
+    if(before==null){ log('Não foi possível ler saldo — parando'); stopAuto(); return; }
+    autoState.lastBalance = before;
+    // check stops
+    if(autoState.stopWin && before >= autoState.stopWin){
+      log('StopWin atingido. Parando.');
+      stopAuto(); return;
+    }
+    if(autoState.stopLoss && before <= autoState.stopLoss){
+      log('StopLoss atingido. Parando.');
+      stopAuto(); return;
+    }
+    // place bet by clicking mapeado(s)
+    // prefer bet1 then bet2 if exist
+    if(mapStore['bet1']){
+      log('Clicando botão Aposta 1 (stake atual: '+autoState.stake+')');
+      clickMapped('bet1');
+    } else if(mapStore['bet2']){
+      log('Clicando botão Aposta 2 (stake atual: '+autoState.stake+')');
+      clickMapped('bet2');
+    } else {
+      log('Nenhum botão de aposta mapeado. Parando.');
+      stopAuto(); return;
+    }
+    // optional: if site needs input of stake, user should map the stake input as 'betInput' - not implemented now.
+    // monitor round: wait until multiplier >= targetX to cashout, else wait until round end
+    const target = autoState.targetX;
+    log('Aguardando multiplicador até >= '+target+' para cashout.');
+    let cashed = false;
+    // while round active: read multiplier frequently
+    for(let t=0;t<600; t++){
+      const cur = parseMultiplier(readMappedText('multiplier')) || 0;
+      if(cur >= target){
+        // cashout
+        if(mapStore['cashout']){
+          log('Multiplicador atingiu '+cur+' — enviando cashout.');
+          clickMapped('cashout');
+          cashed = true;
+        } else {
+          log('Cashout não mapeado; não foi possível sacar automaticamente.');
+        }
+        break;
+      }
+      // detect if round ended (multiplier dipped to ~0 or <1.02)
+      if(cur > 0 && cur < 1.02){
+        // round likely ended early (crash)
+        break;
+      }
+      await wait(200);
+    }
+    // wait a bit for balance update
+    await wait(800);
+    const after = readBalance();
+    if(after==null){ log('Não foi possível ler saldo após round.'); return; }
+    const profit = after - before;
+    if(profit > 0){
+      log('Resultado: WIN  (+'+profit.toFixed(2)+')');
+      autoState.consecutiveLosses = 0;
+      autoState.stake = autoState.baseStake; // reset stake
+      autoState.currentGale = 0;
+    } else {
+      log('Resultado: LOSS ('+profit.toFixed(2)+')');
+      autoState.consecutiveLosses++;
+      autoState.currentGale++;
+      // apply gale multiply
+      autoState.stake = +(autoState.stake * autoState.galeMult).toFixed(2);
+      log('Próximo stake ajustado para '+autoState.stake);
+    }
+    // update lastBalance
+    autoState.lastBalance = after;
+  }catch(e){
+    log('Erro em playOneRound: '+e);
+    throw e;
+  }
+}
+
+// scheduler
+let autoLoopPromise = null;
+async function autoLoop(){
+  while(autoState.running){
+    try{
+      await waitForNextRound();
+      if(!autoState.running) break;
+      await playOneRound();
+      // small delay before waiting next round
+      await wait(400);
+    }catch(err){
+      if(err==='no_multiplier'){ log('Mapeie multiplicador e tente novamente.'); stopAuto(); break; }
+      log('Erro no loop: '+err);
+      await wait(1000);
+    }
+  }
+}
+
+// start / stop
+function startAuto(){
+  if(autoState.running) { log('Já em execução'); return; }
+  // refresh mapStore from localStorage
+  mapStore = loadMap();
+  refreshMapDisplay();
+  // read inputs again
+  autoState.baseStake = parseFloat(panel.querySelector('#aa-stake').value) || autoState.baseStake;
+  autoState.stake = autoState.baseStake;
+  autoState.galeMult = parseFloat(panel.querySelector('#aa-gale').value) || autoState.galeMult;
+  autoState.targetX = parseFloat(panel.querySelector('#aa-target').value) || autoState.targetX;
+  autoState.stopWin = parseFloat(panel.querySelector('#aa-stopwin').value) || autoState.stopWin;
+  autoState.stopLoss = parseFloat(panel.querySelector('#aa-stoploss').value) || autoState.stopLoss;
+  autoState.running = true;
+  log('Auto iniciado. Estratégia: stake='+autoState.stake+', gale='+autoState.galeMult+', objetivo x'+autoState.targetX);
+  autoLoopPromise = autoLoop();
+}
+
+function stopAuto(){
+  if(!autoState.running){ log('Não estava em execução'); return; }
+  autoState.running = false;
+  log('Auto parado.');
+}
+
+// expose some objects for debugging
+window.__aviator_auto = { mapStore, saveMap, loadMap, stopAuto, startAuto, getUniqueSelector };
+
+// final
+log('Painel carregado — mapeie elementos e então clique INICIAR.');
 })();
