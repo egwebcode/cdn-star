@@ -1,4 +1,5 @@
 accept
+x-middleware-subreq
 X-middleware-subrequest
 accept-charset
 accept-encoding
