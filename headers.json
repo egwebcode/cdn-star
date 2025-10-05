@@ -1,4 +1,5 @@
 accept
+X-middleware-subrequest
 accept-charset
 accept-encoding
 accept-language
