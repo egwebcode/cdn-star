@@ -39,10 +39,9 @@ let codes={'index.html':document.documentElement.outerHTML};
 let fileList=['index.html'];
 fileFilter.innerHTML='';fileFilter.appendChild(new Option('index.html','index.html'));
 
-// carregar scripts externos de forma assíncrona
 let scripts=Array.from(document.querySelectorAll('script[src]')).map(el=>el.src);
 let fetchNext=()=>{
-  if(scripts.length===0)return renderProps();
+  if(scripts.length===0) return renderProps();
   let src=scripts.shift();
   fetch(src).then(r=>r.text()).then(t=>{
     codes[src]=t;
@@ -53,22 +52,22 @@ let fetchNext=()=>{
 };
 fetchNext();
 
-// extrair propriedades com regex simples
+// extrair propriedades com regex
 function extractProps(text){
   let props=new Set();
   let regex=/([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)+)/g;
   let m;
-  while(m=regex.exec(text))props.add(m[1]);
+  while(m=regex.exec(text)) props.add(m[1]);
   return Array.from(props);
 }
 
-// obter valor seguro (somente globais existentes)
-function getValueSafe(prop){
+// função para acessar valor de qualquer propriedade aninhada de forma segura
+function getNestedValue(path){
   try{
-    let parts=prop.split('.');
+    let parts=path.split('.');
     let obj=window;
     for(let i=0;i<parts.length;i++){
-      if(obj[parts[i]]===undefined)return undefined;
+      if(obj==null || !(parts[i] in obj)) return undefined;
       obj=obj[parts[i]];
     }
     return obj;
@@ -82,17 +81,22 @@ function renderProps(){
   let selectedFiles=file==='all'?fileList:[file];
   let props=[];
   selectedFiles.forEach(f=>{
-    if(type!=='all' && !f.endsWith(type))return;
+    if(type!=='all' && !f.endsWith(type)) return;
     props=props.concat(extractProps(codes[f]));
   });
-  if(search.value.trim()){
-    props=props.filter(p=>p.includes(search.value.trim()));
-  }
+  if(search.value.trim()) props=props.filter(p=>p.includes(search.value.trim()));
   content.innerHTML='';
   let uniq=[...new Set(props)];
   uniq.forEach(p=>{
-    let val=getValueSafe(p);
-    content.innerHTML+='<span style="color:#0f0;">'+p+'</span> = <span style="color:#ff0;">'+(val===undefined?'undefined':JSON.stringify(val))+'</span>\n';
+    let val=getNestedValue(p);
+    // mostrar tipo do valor
+    let displayVal;
+    try{
+      if(val===undefined) displayVal='undefined';
+      else if(typeof val==='function') displayVal='[Function]';
+      else displayVal=JSON.stringify(val);
+    }catch(e){displayVal='[Unserializable]';}
+    content.innerHTML+='<span style="color:#0f0;">'+p+'</span> = <span style="color:#ff0;">'+displayVal+'</span>\n';
   });
 }
 
@@ -101,6 +105,6 @@ search.oninput=renderProps;
 fileFilter.onchange=renderProps;
 typeFilter.onchange=renderProps;
 
-// inicial
+// render inicial
 setTimeout(renderProps,1500);
 })();
